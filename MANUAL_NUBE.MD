@@ -612,21 +612,7 @@ Bedrock no genera costo si no se invoca.
 
 ---
 
-## 5. Seguridad y operación en producción
-
-| Tema | Práctica |
-|---|---|
-| Exposición | Solo el ALB es público; backend sin acceso directo desde Internet. HTTPS con ACM. |
-| Identidades | Roles de IAM por tarea (sin llaves en imágenes ni variables). OIDC para GitHub Actions. |
-| Imágenes | Escaneo en ECR (`scanOnPush`), usuario no root en el backend, etiquetas inmutables. |
-| Protección | **AWS WAF** en el ALB (límite de peticiones, reglas administradas). Autenticación de la API (Amazon Cognito o API key) antes de abrirla a otros sistemas. |
-| Datos | Según AWS, el contenido enviado a Bedrock no se usa para entrenar los modelos fundacionales; aun así, enviar solo variables estandarizadas, nunca datos personales del cliente. |
-| Observabilidad | CloudWatch Logs y métricas de ECS/ALB; alarmas por 5xx, latencia p95 y tareas no sanas; *Container Insights*. Monitorear la distribución de `probabilidad_fraude` para detectar *drift*. |
-| Modelo | Versionar el `.joblib` (S3 o SageMaker Model Registry) y reentrenar periódicamente; la tasa real de fraude y los costos FN/FP pueden cambiar. |
-
----
-
-## 6. Herramientas de documentación utilizadas
+## 5. Herramientas de documentación utilizadas
 
 | Herramienta | Uso en el proyecto |
 |---|---|
@@ -642,17 +628,3 @@ Bedrock no genera costo si no se invoca.
 Copilot o Amazon Q) se trata como un borrador. Se valida ejecutándolo (pruebas unitarias, prueba de
 integración, verificación en el navegador) y las cifras de la documentación se toman de ejecuciones
 reales, no de estimaciones del asistente.
-
----
-
-## 7. Lista de verificación
-
-- [ ] AWS CLI instalada y sesión iniciada (`aws sts get-caller-identity`).
-- [ ] Acceso a Claude Opus 5.5 concedido en Bedrock.
-- [ ] Pruebas locales en verde (`prueba_integracion.sh`).
-- [ ] Imágenes `faseii-backend` y `faseii-frontend` en ECR (ARM64) sin vulnerabilidades críticas.
-- [ ] Servicios `fraude-backend` y `fraude-frontend` estables en ECS.
-- [ ] `prueba_integracion.sh $URL` en verde contra el ALB.
-- [ ] `/api/explicar` devuelve una explicación desde Bedrock.
-- [ ] Alarmas de CloudWatch y presupuesto de AWS configurados.
-- [ ] Recursos eliminados al terminar la práctica (paso 15).
