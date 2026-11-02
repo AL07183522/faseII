@@ -1,0 +1,71 @@
+{
+  "modelo": "RandomForestClassifier",
+  "hiperparametros": {
+    "bootstrap": true,
+    "ccp_alpha": 0.0,
+    "class_weight": "balanced",
+    "criterion": "gini",
+    "max_depth": 7,
+    "max_features": "sqrt",
+    "max_leaf_nodes": null,
+    "max_samples": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 4,
+    "min_samples_split": 10,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "n_estimators": 150,
+    "n_jobs": -1,
+    "oob_score": false,
+    "random_state": 42,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "particion": {
+    "entrenamiento": 1750,
+    "prueba": 750,
+    "fraudes_prueba": 93
+  },
+  "roc_auc": 0.9216,
+  "pr_auc": 0.7686,
+  "umbral_0_5": {
+    "umbral": 0.5,
+    "recall": 0.8065,
+    "precision": 0.6637,
+    "f2": 0.7732,
+    "matriz_confusion": {
+      "TN": 619,
+      "FP": 38,
+      "FN": 18,
+      "TP": 75
+    },
+    "costo_total_usd": 27950
+  },
+  "umbral_optimo_costo": {
+    "umbral": 0.14,
+    "recall": 0.957,
+    "precision": 0.178,
+    "f2": 0.5103,
+    "matriz_confusion": {
+      "TN": 246,
+      "FP": 411,
+      "FN": 4,
+      "TP": 89
+    },
+    "costo_total_usd": 16275
+  },
+  "importancia_variables": {
+    "desvio_monto_habitual": 0.1774,
+    "intentos_fallidos_previos": 0.1121,
+    "distancia_geografica_ip": 0.1094,
+    "score_dispositivo_nuevo": 0.1083,
+    "ratio_limite_credito": 0.1055,
+    "monto_transaccion": 0.1048,
+    "frecuencia_24h": 0.0808,
+    "tipo_comercio_riesgo": 0.0753,
+    "antiguedad_cuenta_meses": 0.0519,
+    "hora_transaccion_riesgo": 0.047,
+    "transaccion_internacional": 0.0166,
+    "uso_vpn_proxy": 0.0108
+  }
+}

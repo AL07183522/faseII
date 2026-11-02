@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detector de Fraude</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header>
+    <h1>Detector de fraude transaccional</h1>
+    <p class="subtitulo">Random Forest · <span id="estado-api" class="estado">Conectando con la API…</span></p>
+  </header>
+
+  <main>
+    <section class="tarjeta">
+      <h2>Transacción</h2>
+      <p class="nota">Valores estandarizados (media 0, desviación 1), igual que en el dataset.</p>
+      <div class="acciones">
+        <button type="button" class="secundario" data-ejemplo="legitima">Cargar ejemplo legítimo</button>
+        <button type="button" class="secundario" data-ejemplo="fraude">Cargar ejemplo de fraude</button>
+      </div>
+      <form id="formulario">
+        <div id="campos" class="campos"></div>
+        <button type="submit" id="boton-evaluar">Evaluar transacción</button>
+      </form>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Resultado</h2>
+      <div id="resultado" class="resultado vacio">Carga un ejemplo o escribe los valores y pulsa «Evaluar».</div>
+      <h2>Modelo</h2>
+      <dl id="info-modelo" class="info"></dl>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

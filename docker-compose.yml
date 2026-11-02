@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: fuentes/backend/Dockerfile
+    image: faseii-backend:1.0.0
+    container_name: fraude-backend
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: fuentes/frontend
+    image: faseii-frontend:1.0.0
+    container_name: fraude-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
