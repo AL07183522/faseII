@@ -181,12 +181,12 @@ docker compose build
 ```
 
 - Reconstrucción desde cero (`docker compose build --no-cache`) el 2026-11-01 sobre el commit `68c1b3f`,
-  en 60 s, sin errores. Tras corregir la validación de valores extremos se reconstruyó el backend:
+  en 60 s, sin errores. Después se reconstruyeron con los cambios de validación y del frontend:
 
   | Imagen | ID | Tamaño | Base |
   |---|---|---|---|
   | `faseii-backend:1.0.0` | `bb22ae9ebde2` | 660 MB | `python:3.14-slim` (multi-etapa) |
-  | `faseii-frontend:1.0.0` | `b4a4d379285a` | 49.7 MB | `nginx:1.27-alpine` |
+  | `faseii-frontend:1.0.0` | `bbc1ea066d4d` | 49.7 MB | `nginx:1.27-alpine` |
 
 - Durante la construcción del backend se entrena el modelo y se ejecutan las pruebas unitarias
   (`19 passed`). Si una prueba falla, la imagen no se genera.
@@ -229,6 +229,78 @@ cd fuentes/backend && ../../.venv/bin/uvicorn app.main:app --reload
 ```
 
 ## 3. Documento de validación y pruebas
+
+### Validación del modelo
+
+Resultados de `fuentes/modelo_random_forest.py` (guardados en `datos/metricas_random_forest.json`).
+Partición estratificada 70/30: 1,750 registros de entrenamiento (217 fraudes) y 750 de prueba
+(93 fraudes, 12.4 %). Hiperparámetros: `n_estimators=150`, `max_depth=7`, `min_samples_split=10`,
+`min_samples_leaf=4`, `class_weight='balanced'`, `random_state=42`.
+
+**Capacidad de discriminación y sobreajuste**
+
+| Métrica | Entrenamiento | Validación cruzada (5 pliegues) | Prueba |
+|---|---|---|---|
+| ROC-AUC | 0.9937 | 0.9203 | **0.9216** |
+| PR-AUC | 0.9673 | 0.7754 | **0.7686** |
+
+- **ROC-AUC 0.92**: el modelo ordena bien las transacciones; un fraude elegido al azar recibe más
+  probabilidad que una legítima elegida al azar en el 92 % de los casos.
+- **PR-AUC 0.77** frente a una línea base de 0.124 (la proporción de fraudes): es la métrica relevante
+  con clases desbalanceadas y está más de 6 veces por encima de un clasificador aleatorio.
+- **Sobreajuste moderado**: el modelo se ajusta mucho mejor a los datos con que se entrenó (0.99) que a
+  datos nuevos (0.92). La validación cruzada y la prueba coinciden (0.920 y 0.922), así que la
+  estimación de desempeño es estable y no depende de una partición afortunada. Bajar `max_depth` o
+  subir `min_samples_leaf` reduciría la brecha; queda como mejora para una siguiente iteración.
+
+**Umbral de decisión y costo**
+
+El umbral se eligió minimizando el costo total (1,500 × FN + 25 × FP) con predicciones fuera de
+pliegue del entrenamiento; el conjunto de prueba solo se usó para medir.
+
+| Umbral | Recall | Precision | F2 | TP | FN | FP | TN | Costo total |
+|---|---|---|---|---|---|---|---|---|
+| 0.50 (por defecto) | 0.806 | 0.664 | 0.773 | 75 | 18 | 38 | 619 | $27,950 |
+| **0.14 (mínimo costo)** | **0.957** | 0.178 | 0.510 | **89** | **4** | 411 | 246 | **$16,275** |
+
+| Umbral 0.50 | Umbral 0.14 |
+|---|---|
+| ![Matriz de confusión con umbral 0.5](imagenes/rf_matriz_confusion_umbral_0_5.png) | ![Matriz de confusión con umbral 0.14](imagenes/rf_matriz_confusion_umbral_optimo.png) |
+
+- Bajar el umbral a 0.14 reduce los fraudes no detectados de 18 a 4 y el costo total un **42 %**.
+- A cambio, las falsas alarmas suben de 38 a 411 (63 % de las legítimas). Por costo directo conviene,
+  porque cada fraude no detectado cuesta 60 veces más que una falsa alarma, pero esa cantidad de
+  bloqueos genera fricción con el cliente. Por eso la API usa el nivel «medio» (0.14–0.50) para pedir
+  autenticación reforzada y reserva el bloqueo para el nivel «alto» (≥ 0.50).
+
+**Importancia de variables**
+
+![Importancia de variables](imagenes/rf_importancia_variables.png)
+
+| Variable | Importancia |
+|---|---|
+| `desvio_monto_habitual` | 0.177 |
+| `intentos_fallidos_previos` | 0.112 |
+| `distancia_geografica_ip` | 0.109 |
+| `score_dispositivo_nuevo` | 0.108 |
+| `ratio_limite_credito` | 0.106 |
+| `monto_transaccion` | 0.105 |
+| `frecuencia_24h` | 0.081 |
+| `tipo_comercio_riesgo` | 0.075 |
+| `antiguedad_cuenta_meses` | 0.052 |
+| `hora_transaccion_riesgo` | 0.047 |
+| `transaccion_internacional` | 0.017 |
+| `uso_vpn_proxy` | 0.011 |
+
+- La señal más fuerte es que el monto se aleje del comportamiento habitual del cliente, seguida de
+  intentos fallidos previos, distancia de la IP y dispositivo nuevo: patrones típicos de toma de cuenta.
+- `uso_vpn_proxy` y `transaccion_internacional` casi no aportan. Son candidatas a revisar o eliminar.
+- La importancia por reducción de impureza favorece variables continuas; para confirmar el orden
+  convendría calcular importancia por permutación.
+
+**Comportamiento ante valores fuera de rango.** Con todas las variables en ±10 o ±100 el modelo
+devuelve la misma probabilidad (0.6252 / 0.6487): un Random Forest no extrapola y fuera del rango de
+entrenamiento siempre cae en las hojas extremas (ver «Casos extremos evaluados»).
 
 ### Pruebas funcionales realizadas
 
@@ -347,9 +419,9 @@ Ejecutados contra `http://localhost:8080/api/predecir` (a través de nginx) el 2
 
 | Caso | Respuesta | Observación |
 |---|---|---|
-| Todas las variables en 0 (valor medio) | 200, prob. 0.2507, riesgo medio | Comportamiento esperado con umbral 0.14 |
-| Todas en +10 desviaciones | 200, prob. 0.6252, riesgo alto | El Random Forest no extrapola: fuera del rango de entrenamiento usa la última división de cada árbol |
-| Todas en −10 desviaciones | 200, prob. 0.6487, riesgo alto | Ídem |
+| Todas las variables en 0 (cerca de la media) | 200, prob. 0.2507, riesgo medio | Comportamiento esperado con umbral 0.14 |
+| Todas en +10 | 200, prob. 0.6252, riesgo alto | El Random Forest no extrapola: fuera del rango de entrenamiento usa la última división de cada árbol |
+| Todas en −10 | 200, prob. 0.6487, riesgo alto | Ídem |
 | Todas en +100 (límite permitido) | 200, prob. 0.6252 | Igual que +10: confirma que el Random Forest no extrapola |
 | Todas en +100.01 | 422 (`less_than_equal`) | Fuera del rango permitido [−100, 100] |
 | Todas en ±1,000,000 | 422 | Fuera del rango permitido |
@@ -469,6 +541,11 @@ jobs:
 
 #### Cambiado
 - `modelo_random_forest.py` guarda el modelo entrenado y su umbral en `modelos/modelo_random_forest.joblib`.
+- `modelo_random_forest.py` registra ROC-AUC y PR-AUC de entrenamiento y de validación cruzada para medir
+  el sobreajuste; se documentó la validación del modelo (métricas, umbral, matrices de confusión e
+  importancia de variables) en la sección 3.
+- El frontend describe correctamente la escala de las variables y se quitaron los `.gitkeep` de carpetas
+  que ya tienen contenido.
 - La documentación técnica (arquitectura, API, construcción, ejecución, pruebas y despliegue) se unificó
   en este `CHANGELOG.md`; se eliminó `DOCUMENTACION.md`.
 

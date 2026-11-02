@@ -28,6 +28,12 @@
   },
   "roc_auc": 0.9216,
   "pr_auc": 0.7686,
+  "sobreajuste": {
+    "roc_auc_entrenamiento": 0.9937,
+    "pr_auc_entrenamiento": 0.9673,
+    "roc_auc_validacion_cruzada": 0.9203,
+    "pr_auc_validacion_cruzada": 0.7754
+  },
   "umbral_0_5": {
     "umbral": 0.5,
     "recall": 0.8065,

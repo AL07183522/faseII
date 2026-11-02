@@ -123,6 +123,7 @@ def main():
     umbral_optimo = buscar_umbral_optimo(y_train, prob_oof)
 
     modelo = crear_modelo().fit(X_train, y_train)
+    prob_train = modelo.predict_proba(X_train)[:, 1]
     prob_test = modelo.predict_proba(X_test)[:, 1]
 
     resultados = {
@@ -135,6 +136,13 @@ def main():
         },
         "roc_auc": round(roc_auc_score(y_test, prob_test), 4),
         "pr_auc": round(average_precision_score(y_test, prob_test), 4),
+        # Comparar con prueba para detectar sobreajuste.
+        "sobreajuste": {
+            "roc_auc_entrenamiento": round(roc_auc_score(y_train, prob_train), 4),
+            "pr_auc_entrenamiento": round(average_precision_score(y_train, prob_train), 4),
+            "roc_auc_validacion_cruzada": round(roc_auc_score(y_train, prob_oof), 4),
+            "pr_auc_validacion_cruzada": round(average_precision_score(y_train, prob_oof), 4),
+        },
         "umbral_0_5": evaluar(y_test, prob_test, 0.5),
         "umbral_optimo_costo": evaluar(y_test, prob_test, umbral_optimo),
     }
