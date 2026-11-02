@@ -17,14 +17,13 @@ se evalúan con recall, precision, F2, PR-AUC y costo total, no con accuracy.
 
 ```
 ├── README.md
-├── CHANGELOG.md
+├── CHANGELOG.md        # Documentación técnica, pruebas y registro de cambios
+├── MANUAL_NUBE.MD      # Manual de despliegue en AWS (ECS Fargate + Bedrock)
 ├── requirements.txt
-├── DOCUMENTACION.md     # Documentación técnica completa
-├── MANUAL_NUBE.MD       # Manual de despliegue en AWS (ECS Fargate + Bedrock)
 ├── docker-compose.yml
-├── datos/      # Dataset y métricas generadas
-├── fuentes/    # Modelo, backend (FastAPI), frontend (nginx) y pruebas
-└── imagenes/   # Gráficas y capturas
+├── datos/              # Dataset y métricas generadas
+├── fuentes/            # Modelo, backend (FastAPI), frontend (nginx) y pruebas
+└── imagenes/           # Gráficas y capturas
 ```
 
 ## Ejecución con Docker
@@ -37,7 +36,7 @@ docker compose up -d --build
 - API y Swagger: http://localhost:8000/docs
 - Pruebas de integración: `bash fuentes/prueba_integracion.sh`
 
-Detalles de arquitectura y pruebas en [DOCUMENTACION.md](DOCUMENTACION.md). Despliegue en AWS paso a paso
+Detalles de arquitectura y pruebas en [CHANGELOG.md](CHANGELOG.md). Despliegue en AWS paso a paso
 (ECS Fargate + Amazon Bedrock) en [MANUAL_NUBE.MD](MANUAL_NUBE.MD).
 
 ## Entrenamiento en local

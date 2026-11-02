@@ -4,7 +4,7 @@ Este manual explica cómo desplegar en **Amazon Web Services (AWS)** el detector
 (frontend nginx + API FastAPI con el modelo Random Forest), y cómo integrar **Amazon Bedrock**
 para añadir explicaciones en lenguaje natural de cada predicción.
 
-> Complementa a [DOCUMENTACION.md](DOCUMENTACION.md), que describe la arquitectura, la construcción de
+> Complementa a [CHANGELOG.md](CHANGELOG.md), que describe la arquitectura, la construcción de
 > los contenedores y las pruebas en local.
 
 ---
@@ -630,7 +630,7 @@ Bedrock no genera costo si no se invoca.
 
 | Herramienta | Uso en el proyecto |
 |---|---|
-| **Claude Code** (asistente de IA de Anthropic) | Se usó en este proyecto para generar y revisar código, pruebas y documentación: `README.md`, `DOCUMENTACION.md`, este manual y el `CHANGELOG.md`. Además ejecutó las pruebas y capturó las imágenes del frontend y de Swagger que aparecen en la documentación. |
+| **Claude Code** (asistente de IA de Anthropic) | Se usó en este proyecto para generar y revisar código, pruebas y documentación: `README.md`, este manual y el `CHANGELOG.md` (documentación técnica, pruebas y registro de cambios). Además ejecutó las pruebas y capturó las imágenes del frontend y de Swagger que aparecen en la documentación. |
 | **GitHub Copilot** | Alternativa integrada en VS Code y GitHub. Usos recomendados: `/doc` en Copilot Chat para generar *docstrings* de funciones (`evaluar`, `buscar_umbral_optimo`, endpoints de la API); `/explain` para documentar fragmentos complejos (Dockerfile multi-etapa, `nginx.conf`); generación de mensajes de *commit* y resúmenes automáticos de *pull requests*. |
 | **Amazon Q Developer** | Asistente de IA de AWS para VS Code/JetBrains. Su agente `/doc` genera o actualiza READMEs a partir del código, y conoce los servicios de AWS, por lo que sirve para revisar comandos de la CLI y políticas de IAM de este manual. |
 | **FastAPI + OpenAPI (Swagger UI)** | Documentación de la API **generada automáticamente desde el código** en `/docs` y `/openapi.json`. Siempre está sincronizada con los endpoints reales. El esquema OpenAPI también se puede importar en Postman o usarse como *action group* de un agente de Amazon Bedrock. |
