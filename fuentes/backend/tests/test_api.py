@@ -4,10 +4,12 @@ Ejecutar desde la raíz del repositorio:
     .venv/bin/pytest fuentes/backend/tests -v
 """
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import COLUMNAS, DATOS, UMBRAL, app
+from app.main import COLUMNAS, DATOS, LIMITE_VALOR, UMBRAL, app
 
 cliente = TestClient(app)
 
@@ -78,3 +80,28 @@ def test_predecir_variable_extra():
 def test_predecir_valor_no_numerico():
     transaccion = transaccion_del_dataset(0) | {"frecuencia_24h": "alto"}
     assert cliente.post("/api/predecir", json=transaccion).status_code == 422
+
+
+def enviar_crudo(transaccion):
+    """POST con NaN/Infinity tal cual (JSON no estándar que sí aceptan muchos clientes)."""
+    return cliente.post(
+        "/api/predecir",
+        content=json.dumps(transaccion, allow_nan=True),
+        headers={"Content-Type": "application/json"},
+    )
+
+
+@pytest.mark.parametrize(
+    "valor", [float("nan"), float("inf"), float("-inf"), 1e308, -1e308, 1e6, LIMITE_VALOR + 0.01]
+)
+def test_predecir_rechaza_valores_extremos(valor):
+    transaccion = transaccion_del_dataset(0) | {"monto_transaccion": valor}
+    respuesta = enviar_crudo(transaccion)
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"][0]["loc"] == ["body", "monto_transaccion"]
+
+
+@pytest.mark.parametrize("valor", [LIMITE_VALOR, -LIMITE_VALOR])
+def test_predecir_acepta_valores_en_el_limite(valor):
+    transaccion = transaccion_del_dataset(0) | {"monto_transaccion": valor}
+    assert enviar_crudo(transaccion).status_code == 200

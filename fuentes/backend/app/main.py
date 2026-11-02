@@ -9,13 +9,17 @@ Endpoints:
     POST /api/predecir  Probabilidad de fraude y decisión para una transacción.
 """
 
+import math
 import os
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 # En el contenedor las rutas llegan por variables de entorno; en local se usan
@@ -40,23 +44,48 @@ app = FastAPI(
 )
 
 
+def _json_seguro(valor):
+    """Convierte NaN/Infinity a texto: el JSON estándar no los admite."""
+    if isinstance(valor, float) and not math.isfinite(valor):
+        return str(valor)
+    if isinstance(valor, dict):
+        return {k: _json_seguro(v) for k, v in valor.items()}
+    if isinstance(valor, list):
+        return [_json_seguro(v) for v in valor]
+    return valor
+
+
+@app.exception_handler(RequestValidationError)
+async def error_de_validacion(request: Request, error: RequestValidationError):
+    # El detalle de error repite la entrada recibida; si traía NaN o Infinity,
+    # la respuesta 422 por defecto no se podría serializar y terminaría en 500.
+    return JSONResponse(status_code=422, content={"detail": _json_seguro(jsonable_encoder(error.errors()))})
+
+
+# En el dataset ninguna variable supera |10.06|. Se acepta hasta 100 para no
+# rechazar atípicos plausibles, y se rechazan NaN, infinitos y valores enormes
+# (que además desbordan el float32 que usa scikit-learn internamente).
+LIMITE_VALOR = 100.0
+Valor = Annotated[float, Field(ge=-LIMITE_VALOR, le=LIMITE_VALOR, allow_inf_nan=False)]
+
+
 class Transaccion(BaseModel):
-    """Variables de la transacción, estandarizadas igual que en el dataset."""
+    """Variables de la transacción, en la misma escala que el dataset."""
 
     model_config = ConfigDict(extra="forbid")
 
-    monto_transaccion: float
-    frecuencia_24h: float
-    desvio_monto_habitual: float
-    distancia_geografica_ip: float
-    score_dispositivo_nuevo: float
-    intentos_fallidos_previos: float
-    antiguedad_cuenta_meses: float
-    hora_transaccion_riesgo: float
-    tipo_comercio_riesgo: float
-    uso_vpn_proxy: float
-    transaccion_internacional: float
-    ratio_limite_credito: float
+    monto_transaccion: Valor
+    frecuencia_24h: Valor
+    desvio_monto_habitual: Valor
+    distancia_geografica_ip: Valor
+    score_dispositivo_nuevo: Valor
+    intentos_fallidos_previos: Valor
+    antiguedad_cuenta_meses: Valor
+    hora_transaccion_riesgo: Valor
+    tipo_comercio_riesgo: Valor
+    uso_vpn_proxy: Valor
+    transaccion_internacional: Valor
+    ratio_limite_credito: Valor
 
 
 class Prediccion(BaseModel):

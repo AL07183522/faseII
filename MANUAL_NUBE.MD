@@ -181,7 +181,7 @@ docker compose down
 ```
 
 Solo se continúa si la prueba termina con «Todas las pruebas de integración pasaron».
-(El `docker build` del backend ya ejecuta las 10 pruebas unitarias.)
+(El `docker build` del backend ya ejecuta las 19 pruebas unitarias.)
 
 ### Paso 3 — Habilitar Claude en Amazon Bedrock
 

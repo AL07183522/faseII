@@ -106,8 +106,9 @@ curl -X POST http://localhost:8080/api/predecir \
 | 0.14 – 0.50 | medio | Retener y solicitar autenticación reforzada |
 | ≥ 0.50 | alto | Bloquear y escalar a mesa de fraude |
 
-**Validación de entrada.** Pydantic exige las 12 variables, todas numéricas, y rechaza campos
-desconocidos. Cualquier error devuelve `422` con el detalle del campo, que el frontend muestra al usuario.
+**Validación de entrada.** Pydantic exige las 12 variables, todas numéricas, finitas (sin `NaN` ni
+`Infinity`) y entre **−100 y 100** (en el dataset ninguna supera |10.06|), y rechaza campos desconocidos.
+Cualquier error devuelve `422` con el detalle del campo, que el frontend muestra al usuario.
 
 ## 3. Construcción de los contenedores
 
@@ -155,7 +156,7 @@ Resultado obtenido:
 
 ```
 #25 Modelo guardado en modelos/modelo_random_forest.joblib
-#27 10 passed, 1 warning in 2.59s
+#23 19 passed, 1 warning in 4.22s
  Image faseii-frontend:1.0.0 Built
  Image faseii-backend:1.0.0 Built
 ```
@@ -219,8 +220,10 @@ cd fuentes/backend && ../../.venv/bin/uvicorn app.main:app --reload
 | 8 | `test_predecir_falta_variable` | Falta una variable → 422 | ✅ |
 | 9 | `test_predecir_variable_extra` | Campo desconocido → 422 | ✅ |
 | 10 | `test_predecir_valor_no_numerico` | Texto en un campo numérico → 422 | ✅ |
+| 11–17 | `test_predecir_rechaza_valores_extremos` | `NaN`, `Infinity`, `-Infinity`, `±1e308`, `1e6` y `100.01` → 422 en el campo correcto | ✅ |
+| 18–19 | `test_predecir_acepta_valores_en_el_limite` | `100` y `−100` (límites) → 200 | ✅ |
 
-Resultado: **10 passed**.
+Resultado: **19 passed**.
 
 ### 5.2 Pruebas de integración extremo a extremo
 
@@ -274,6 +277,7 @@ En <http://localhost:8080> se verificó que:
 | Problema | Causa | Solución |
 |---|---|---|
 | El backend arrancaba y quedaba `unhealthy` con `IndexError` | La ruta por defecto del modelo se calculaba con la estructura de carpetas del repositorio, que no existe dentro de la imagen (`/app/app/main.py`). | Las rutas se toman primero de `RUTA_MODELO` / `RUTA_DATOS` y solo si faltan se calcula la ruta del repositorio. |
+| `Infinity` y `1e308` devolvían **500** y `NaN` producía una predicción (200) | El esquema aceptaba cualquier `float`; scikit-learn trabaja en `float32` y falla con infinitos o valores enormes, y el Random Forest acepta `NaN` sin avisar. | Validación `allow_inf_nan=False` y rango `[-100, 100]` en las 12 variables (→ 422), y un manejador de errores que convierte `NaN`/`Infinity` a texto para poder devolver el 422 en JSON válido. 9 pruebas unitarias nuevas. |
 | El frontend quedaba `unhealthy` aunque respondía | En Alpine `localhost` resuelve a IPv6 (`::1`) y nginx solo escucha en IPv4. | El *healthcheck* usa `http://127.0.0.1/`. |
 | Con el backend caído la interfaz mostraba `Unexpected token '<'…` | nginx devuelve una página HTML de error 502 y el frontend intentaba leerla como JSON. | `app.js` detecta respuestas que no son JSON y muestra «Error 502: el servicio de la API no responde.» |
 
