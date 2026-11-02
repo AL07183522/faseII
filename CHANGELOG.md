@@ -1,7 +1,8 @@
 # Changelog
 
 Este archivo reúne la documentación técnica del proyecto: arquitectura, integración por API,
-contenerización, validación y pruebas, y despliegue.
+contenerización, validación y pruebas. El despliegue en la nube se describe en
+[MANUAL_NUBE.MD](MANUAL_NUBE.MD).
 
 | | |
 |---|---|
@@ -15,8 +16,6 @@ contenerización, validación y pruebas, y despliegue.
 1. [Arquitectura e integración por API](#1-arquitectura-e-integración-por-api)
 2. [Contenedor Docker funcional](#2-contenedor-docker-funcional)
 3. [Documento de validación y pruebas](#3-documento-de-validación-y-pruebas)
-4. [Estrategias de despliegue en la nube](#4-estrategias-de-despliegue-en-la-nube)
-5. [Consideraciones del modelo en producción](#5-consideraciones-del-modelo-en-producción)
 
 ## 1. Arquitectura e integración por API
 
@@ -189,6 +188,9 @@ docker compose build
 
 - Durante la construcción del backend se entrena el modelo y se ejecutan las pruebas unitarias
   (`19 passed`). Si una prueba falla, la imagen no se genera.
+- El modelo entrenado dentro del contenedor obtiene las mismas métricas que en local salvo diferencias
+  en el cuarto decimal (PR-AUC 0.7683 vs 0.7686), atribuibles a la plataforma; el recall y la matriz
+  de confusión con umbral óptimo coinciden.
 - El backend pesa 660 MB por Python + numpy/pandas/scikit-learn; solo incluye las dependencias de
   ejecución, el modelo entrenado, el dataset y el código de la API.
 
@@ -361,7 +363,7 @@ Todas las pruebas de integración pasaron.
 ```
 
 > El ejemplo legítimo quedó marcado como riesgo medio: es esperable con el umbral de 0.14, que
-> prioriza no dejar pasar fraudes (recall 95.7%) a costa de más falsas alarmas (ver sección 5).
+> prioriza no dejar pasar fraudes (recall 95.7%) a costa de más falsas alarmas (ver «Validación del modelo»).
 
 #### Prueba funcional en el navegador
 
@@ -448,71 +450,3 @@ JSON válido. Se añadieron 9 pruebas unitarias (`test_predecir_rechaza_valores_
 | El backend arrancaba y quedaba `unhealthy` con `IndexError` | La ruta por defecto del modelo se calculaba con la estructura de carpetas del repositorio, que no existe dentro de la imagen (`/app/app/main.py`). | Las rutas se toman primero de `RUTA_MODELO` / `RUTA_DATOS` y solo si faltan se calcula la ruta del repositorio. |
 | El frontend quedaba `unhealthy` aunque respondía | En Alpine `localhost` resuelve a IPv6 (`::1`) y nginx solo escucha en IPv4. | El *healthcheck* usa `http://127.0.0.1/`. |
 | Con el backend caído la interfaz mostraba `Unexpected token '<'…` | nginx devuelve una página HTML de error 502 y el frontend intentaba leerla como JSON. | `app.js` detecta respuestas que no son JSON y muestra «Error 502: el servicio de la API no responde.» |
-
-## 4. Estrategias de despliegue en la nube
-
-> El procedimiento detallado para AWS (ECS Fargate + Amazon Bedrock) está en
-> [MANUAL_NUBE.MD](MANUAL_NUBE.MD).
-
-La aplicación ya está lista para la nube: dos imágenes inmutables, configuración por variables de
-entorno, *healthchecks*, usuario sin privilegios y un único punto de entrada público (nginx).
-
-### Flujo común
-
-1. **Registro de imágenes**: publicar `faseii-backend` y `faseii-frontend` con etiqueta de versión
-   (p. ej. `1.0.0` y el SHA del commit) en un registro privado.
-2. **CI/CD con GitHub Actions** (el repositorio ya está en GitHub): en cada *push* a `main`,
-   construir las imágenes (el `docker build` ya ejecuta las pruebas), ejecutar
-   `prueba_integracion.sh` con `docker compose up`, publicar las imágenes y desplegar.
-3. **Despliegue**: actualizar el servicio con la nueva etiqueta y verificar `/api/salud`.
-
-Ejemplo de pipeline:
-
-```yaml
-# .github/workflows/despliegue.yml
-on: { push: { branches: [main] } }
-jobs:
-  construir-probar-publicar:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker compose up -d --build        # entrena + pytest dentro del build
-      - run: bash fuentes/prueba_integracion.sh  # pruebas extremo a extremo
-      - run: docker compose down
-      # login al registro, docker tag/push y despliegue según el proveedor elegido
-```
-
-### Opciones por proveedor
-
-| Opción | Cómo se despliega | Ventajas | Consideraciones |
-|---|---|---|---|
-| **Google Cloud Run** | Dos servicios: frontend público y backend con acceso interno; `nginx.conf` apunta a la URL del backend. | *Serverless*, escala a cero, pago por petición, HTTPS automático. | Arranque en frío (~2–4 s por cargar scikit-learn); se mitiga con `min-instances=1`. |
-| **AWS ECS Fargate + ALB** *(elegida, ver MANUAL_NUBE.MD)* | Imágenes en ECR, un servicio ECS por contenedor, *Application Load Balancer* con *health check*. | Sin servidores que administrar, integración con IAM, CloudWatch, Secrets Manager y Amazon Bedrock. | Más piezas de configurar (VPC, subredes, ALB). |
-| **AWS App Runner** | Un servicio por imagen desde ECR. | El más sencillo en AWS. | Menos control de red. |
-| **Azure Container Apps** | Imágenes en ACR, *ingress* externo para el frontend e interno para el backend. | Escalado por peticiones, revisiones para *blue/green*. | — |
-| **Kubernetes (EKS / GKE / AKS)** | `Deployment` + `Service` por componente, `Ingress` para el frontend, `readinessProbe` en `/api/salud`, HPA. | Máximo control y portabilidad. | Mayor complejidad operativa; se justifica a gran escala. |
-
-### Buenas prácticas para producción
-
-- **Seguridad**: exponer solo el frontend/balanceador; backend en red privada. HTTPS en el balanceador.
-  Autenticación de la API (API key u OAuth2) antes de abrirla a otros sistemas. Escaneo de
-  vulnerabilidades de imágenes (Trivy, ECR/Artifact Registry scanning).
-- **Configuración**: umbral y rutas por variables de entorno (`UMBRAL_DECISION`), secretos en el
-  gestor del proveedor, nunca en la imagen.
-- **Escalado**: el backend es *stateless*, por lo que escala horizontalmente. Escalar por CPU o por
-  número de peticiones concurrentes.
-- **Despliegues sin corte**: *rolling update* o *blue/green* usando `/api/salud` como *readiness check*.
-- **Observabilidad**: logs estructurados a CloudWatch / Cloud Logging, métricas de latencia y tasa de
-  errores, y monitoreo de la **distribución de probabilidades** para detectar *drift* del modelo.
-- **Gestión del modelo**: versionar el artefacto `.joblib` (registro de modelos o almacenamiento de
-  objetos) para reentrenar sin reconstruir la imagen de la API.
-
-## 5. Consideraciones del modelo en producción
-
-- Con el umbral de costo mínimo (0.14) el modelo detecta 89 de 93 fraudes en prueba (recall 95.7 %)
-  pero genera 411 falsas alarmas sobre 657 legítimas. Antes de producción conviene acordar con negocio
-  un tope de falsas alarmas o usar el nivel «medio» para autenticación reforzada en vez de bloqueo,
-  como hace ya la API.
-- El modelo entrenado dentro del contenedor obtiene las mismas métricas que en local salvo diferencias
-  en el cuarto decimal (PR-AUC 0.7683 vs 0.7686), atribuibles a la plataforma; el recall y la matriz
-  de confusión con umbral óptimo coinciden.
