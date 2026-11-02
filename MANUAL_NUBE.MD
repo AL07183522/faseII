@@ -616,15 +616,6 @@ Bedrock no genera costo si no se invoca.
 
 | Herramienta | Uso en el proyecto |
 |---|---|
-| **Claude Code** (asistente de IA de Anthropic) | Se usó en este proyecto para generar y revisar código, pruebas y documentación: `README.md`, este manual y el `CHANGELOG.md` (documentación técnica, validación y pruebas). Además ejecutó las pruebas y capturó las imágenes del frontend y de Swagger que aparecen en la documentación. |
-| **GitHub Copilot** | Alternativa integrada en VS Code y GitHub. Usos recomendados: `/doc` en Copilot Chat para generar *docstrings* de funciones (`evaluar`, `buscar_umbral_optimo`, endpoints de la API); `/explain` para documentar fragmentos complejos (Dockerfile multi-etapa, `nginx.conf`); generación de mensajes de *commit* y resúmenes automáticos de *pull requests*. |
-| **Amazon Q Developer** | Asistente de IA de AWS para VS Code/JetBrains. Su agente `/doc` genera o actualiza READMEs a partir del código, y conoce los servicios de AWS, por lo que sirve para revisar comandos de la CLI y políticas de IAM de este manual. |
-| **FastAPI + OpenAPI (Swagger UI)** | Documentación de la API **generada automáticamente desde el código** en `/docs` y `/openapi.json`. Siempre está sincronizada con los endpoints reales. El esquema OpenAPI también se puede importar en Postman o usarse como *action group* de un agente de Amazon Bedrock. |
-| **Markdown en GitHub** | Toda la documentación vive en el repositorio junto al código, versionada con Git y revisable en *pull requests*. |
-| **CHANGELOG.md** | Documento técnico único del proyecto: arquitectura, contenerización, validación del modelo y pruebas. |
-| **Docstrings y comentarios** | Cada módulo (`modelo_random_forest.py`, `main.py`, `test_api.py`, `prueba_integracion.sh`) explica su propósito y cómo ejecutarlo. |
-
-**Criterio aplicado con las herramientas de IA:** todo contenido generado con asistentes (Claude Code,
-Copilot o Amazon Q) se trata como un borrador. Se valida ejecutándolo (pruebas unitarias, prueba de
-integración, verificación en el navegador) y las cifras de la documentación se toman de ejecuciones
-reales, no de estimaciones del asistente.
+| **GitHUB cli** (cli de githug) | Se usó para que claude pudiera hacer cambios sobre el repositorio |
+| **Claude Code** (asistente de IA de Anthropic) | Se usó en este proyecto para generar y revisar código, pruebas y documentación: `README.md`, este manual y el `CHANGELOG.md`. |
+| **FastAPI + OpenAPI (Swagger UI)** | Documentación de la API **generada automáticamente desde el código** en `/docs` y `/openapi.json`. |
