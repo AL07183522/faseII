@@ -17,7 +17,7 @@ se evalúan con recall, precision, F2, PR-AUC y costo total, no con accuracy.
 
 ```
 ├── README.md
-├── CHANGELOG.md        # Documentación técnica, pruebas y registro de cambios
+├── CHANGELOG.md        # Documentación técnica, validación y pruebas
 ├── MANUAL_NUBE.MD      # Manual de despliegue en AWS (ECS Fargate + Bedrock)
 ├── requirements.txt
 ├── docker-compose.yml

@@ -1,7 +1,7 @@
 # Changelog
 
-Este archivo reúne la documentación técnica del proyecto (arquitectura, integración por API,
-contenerización, validación y pruebas) y el registro de cambios.
+Este archivo reúne la documentación técnica del proyecto: arquitectura, integración por API,
+contenerización, validación y pruebas, y despliegue.
 
 | | |
 |---|---|
@@ -17,7 +17,6 @@ contenerización, validación y pruebas) y el registro de cambios.
 3. [Documento de validación y pruebas](#3-documento-de-validación-y-pruebas)
 4. [Estrategias de despliegue en la nube](#4-estrategias-de-despliegue-en-la-nube)
 5. [Consideraciones del modelo en producción](#5-consideraciones-del-modelo-en-producción)
-6. [Registro de cambios](#registro-de-cambios)
 
 ## 1. Arquitectura e integración por API
 
@@ -517,38 +516,3 @@ jobs:
 - El modelo entrenado dentro del contenedor obtiene las mismas métricas que en local salvo diferencias
   en el cuarto decimal (PR-AUC 0.7683 vs 0.7686), atribuibles a la plataforma; el recall y la matriz
   de confusión con umbral óptimo coinciden.
-
-## Registro de cambios
-
-### [Sin publicar]
-
-#### Añadido
-- Estructura inicial del proyecto: `datos/`, `fuentes/` e `imagenes/`.
-- `CHANGELOG.md`.
-- Dataset `datos/datos_fraude.csv` (2,500 transacciones sintéticas, 12 variables, 12.4% fraude).
-- Modelo Random Forest en `fuentes/modelo_random_forest.py` con partición estratificada 70/30,
-  evaluación por costo (FN = $1,500, FP = $25) y umbral óptimo elegido por validación cruzada.
-- Métricas en `datos/metricas_random_forest.json` y gráficas en `imagenes/`.
-- `requirements.txt` y `.gitignore`.
-- API REST con FastAPI (`fuentes/backend`): `/api/salud`, `/api/modelo`, `/api/ejemplo` y `/api/predecir`,
-  con 19 pruebas unitarias (pytest).
-- Frontend web (`fuentes/frontend`) servido por nginx con proxy inverso `/api` hacia el backend.
-- Contenerización: Dockerfile multi-etapa del backend (entrena el modelo y ejecuta las pruebas en el
-  build), Dockerfile del frontend, `docker-compose.yml` con healthchecks y `.dockerignore`.
-- Prueba de integración extremo a extremo `fuentes/prueba_integracion.sh`.
-- `MANUAL_NUBE.MD`: manual de despliegue en AWS (ECR, ECS Fargate, ALB, Service Connect) con integración
-  de Amazon Bedrock para explicar predicciones, requerimientos, estrategia y herramientas de documentación.
-
-#### Cambiado
-- `modelo_random_forest.py` guarda el modelo entrenado y su umbral en `modelos/modelo_random_forest.joblib`.
-- `modelo_random_forest.py` registra ROC-AUC y PR-AUC de entrenamiento y de validación cruzada para medir
-  el sobreajuste; se documentó la validación del modelo (métricas, umbral, matrices de confusión e
-  importancia de variables) en la sección 3.
-- El frontend describe correctamente la escala de las variables y se quitaron los `.gitkeep` de carpetas
-  que ya tienen contenido.
-- La documentación técnica (arquitectura, API, construcción, ejecución, pruebas y despliegue) se unificó
-  en este `CHANGELOG.md`; se eliminó `DOCUMENTACION.md`.
-
-#### Corregido
-- La API devolvía 500 con `Infinity` o valores enormes y aceptaba `NaN`; ahora responde 422. Las variables
-  se limitan a números finitos en [−100, 100].
